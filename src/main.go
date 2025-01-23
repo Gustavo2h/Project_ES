@@ -182,7 +182,7 @@ func createProduct(c *gin.Context) {
         c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid input"})
         return
     }
-    newProduct.ID = generateID(len(products))
+    newProduct.ID = generateID(len(products), "P")
     products = append(products, newProduct)
     c.JSON(http.StatusCreated, newProduct)
 }
@@ -212,8 +212,8 @@ func listCustomers(c *gin.Context) {
     c.JSON(http.StatusOK, customers)
 }
 
-func generateID(index int) string {
-    return strconv.Itoa(index)
+func generateID(index int, prefix string) string {
+    return prefix + strconv.Itoa(index)
 }
 
 // Função para adicionar cliente
@@ -223,7 +223,7 @@ func addCustomer(c *gin.Context) {
         c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid input"})
         return
     }
-    newCustomer.ID = generateID(len(customers))
+    newCustomer.ID = generateID(len(customers), "C")
     customers = append(customers, newCustomer)
     c.JSON(http.StatusCreated, newCustomer)
 }
@@ -235,7 +235,7 @@ func addSeller(c *gin.Context) {
         c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid input"})
         return
     }
-    newSeller.ID = generateID(len(sellers))
+    newSeller.ID = generateID(len(sellers), "S")
     sellers = append(sellers, newSeller)
     c.JSON(http.StatusCreated, newSeller)
 }
