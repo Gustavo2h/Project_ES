@@ -1,6 +1,6 @@
 module github.com/Gustavo2h/Project_ES
 
-go 1.17
+go 1.18
 
 require (
 	github.com/gin-gonic/gin v1.10.0
