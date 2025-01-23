@@ -38,6 +38,9 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v2
 
+    - name: Fetch full history
+      run: git fetch --unshallow
+
     - name: Create .netrc file
       run: |
         echo "machine api.heroku.com login ${{ secrets.HEROKU_EMAIL }} password ${{ secrets.HEROKU_API_KEY }}" > ~/.netrc
