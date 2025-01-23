@@ -47,10 +47,13 @@ jobs:
         echo "machine git.heroku.com login ${{ secrets.HEROKU_EMAIL }} password ${{ secrets.HEROKU_API_KEY }}" >> ~/.netrc
         chmod 600 ~/.netrc
 
+    - name: Set buildpack
+      run: heroku buildpacks:set https://github.com/heroku/heroku-buildpack-go
+
     - name: Deploy to Heroku
       env:
         HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
         HEROKU_APP_NAME: ${{ secrets.HEROKU_APP_NAME }}
       run: |
         git remote add heroku https://git.heroku.com/${{ secrets.HEROKU_APP_NAME }}.git
-        git push heroku main
+        git push heroku main:refs/heads/main
