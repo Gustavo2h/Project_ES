@@ -3,7 +3,8 @@ package main
 import (
     "net/http"
     "time"
-
+    "strconv"
+    
     "github.com/gin-gonic/gin"
     "github.com/golang-jwt/jwt/v4"
 )
@@ -212,7 +213,7 @@ func listCustomers(c *gin.Context) {
 }
 
 func generateID(index int) string {
-    return string('A' + index)
+    return strconv.Itoa(index)
 }
 
 // Função para adicionar cliente
