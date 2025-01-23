@@ -14,16 +14,17 @@ import (
 func TestGenerateID(t *testing.T) {
     testCases := []struct {
         index    int
+        prefix   string
         expected string
     }{
-        {0, "A"},
-        {1, "B"},
-        {25, "Z"},
+        {0, "A", "A0"},
+        {1, "B", "B1"},
+        {25, "Z", "Z25"},
     }
 
     for _, tc := range testCases {
         t.Run(tc.expected, func(t *testing.T) {
-            result := generateID(tc.index)
+            result := generateID(tc.index, tc.prefix)
             assert.Equal(t, tc.expected, result)
         })
     }
