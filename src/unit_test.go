@@ -6,7 +6,8 @@ import (
     "github.com/stretchr/testify/assert"
 )
 
-func TestGenerateID(t *testing.T) {
+// Renomeamos a função para evitar conflitos
+func TestGenerateID_Unit(t *testing.T) {
     testCases := []struct {
         index    int
         prefix   string
