@@ -1,148 +1,167 @@
 package main
 
 import (
-	"bytes"
-	"encoding/json"
-	"net/http"
-	"testing"
-	"github.com/stretchr/testify/assert"
+    "encoding/json"
+    "net/http"
+    "net/http/httptest"
+    "strings"
+    "testing"
+
+    "github.com/gin-gonic/gin"
+    "github.com/stretchr/testify/assert"
 )
 
-func executeRequest(req *http.Request, router http.Handler) *http.Response {
-	// Função auxiliar para executar a requisição e retornar a resposta
-	rr := httptest.NewRecorder()
-	router.ServeHTTP(rr, req)
-	return rr.Result()
-}
+func TestGenerateID(t *testing.T) {
+    testCases := []struct {
+        index    int
+        prefix   string
+        expected string
+    }{
+        {0, "A", "A0"},
+        {1, "B", "B1"},
+        {25, "Z", "Z25"},
+    }
 
-func TestLogin(t *testing.T) {
-	// Testa o login e a geração do token JWT
-
-	loginRequest := loginRequest{
-		Email:    "loja_a@example.com",
-		Password: "password123",
-	}
-	jsonValue, _ := json.Marshal(loginRequest)
-
-	req, _ := http.NewRequest("POST", "/login", bytes.NewBuffer(jsonValue))
-	resp := executeRequest(req, router)
-
-	assert.Equal(t, 200, resp.StatusCode)
-
-	var response map[string]interface{}
-	json.NewDecoder(resp.Body).Decode(&response)
-	assert.NotEmpty(t, response["token"])
-}
-
-func TestCreateProductWithAuth(t *testing.T) {
-	// Testa a criação de um produto com autenticação JWT
-
-	createProductRequest := product{
-		Name:     "Teclado",
-		Type:     "Eletrônico",
-		Quantity: 50,
-	}
-	jsonValue, _ := json.Marshal(createProductRequest)
-
-	// Obter o token com o login
-	loginRequest := loginRequest{
-		Email:    "loja_a@example.com",
-		Password: "password123",
-	}
-	jsonValueLogin, _ := json.Marshal(loginRequest)
-	reqLogin, _ := http.NewRequest("POST", "/login", bytes.NewBuffer(jsonValueLogin))
-	respLogin := executeRequest(reqLogin, router)
-
-	var response map[string]interface{}
-	json.NewDecoder(respLogin.Body).Decode(&response)
-	token := response["token"].(string)
-
-	// Fazer a requisição para criar o produto com o token JWT
-	req, _ := http.NewRequest("POST", "/products", bytes.NewBuffer(jsonValue))
-	req.Header.Set("Authorization", "Bearer "+token) // Adicionando o token no cabeçalho
-	resp := executeRequest(req, router)
-
-	assert.Equal(t, 201, resp.StatusCode)
-}
-
-func TestDeleteProductWithAuth(t *testing.T) {
-	// Testa a exclusão de um produto com autenticação JWT
-
-	productID := "P1"
-
-	// Obter o token com o login
-	loginRequest := loginRequest{
-		Email:    "loja_a@example.com",
-		Password: "password123",
-	}
-	jsonValueLogin, _ := json.Marshal(loginRequest)
-	reqLogin, _ := http.NewRequest("POST", "/login", bytes.NewBuffer(jsonValueLogin))
-	respLogin := executeRequest(reqLogin, router)
-
-	var response map[string]interface{}
-	json.NewDecoder(respLogin.Body).Decode(&response)
-	token := response["token"].(string)
-
-	// Fazer a requisição para excluir o produto com o token JWT
-	req, _ := http.NewRequest("DELETE", "/products/"+productID, nil)
-	req.Header.Set("Authorization", "Bearer "+token)
-	resp := executeRequest(req, router)
-
-	assert.Equal(t, 200, resp.StatusCode)
+    for _, tc := range testCases {
+        t.Run(tc.expected, func(t *testing.T) {
+            result := generateID(tc.index, tc.prefix)
+            assert.Equal(t, tc.expected, result)
+        })
+    }
 }
 
 func TestListProducts(t *testing.T) {
-	// Testa a listagem de produtos (rota pública)
-	req, _ := http.NewRequest("GET", "/products", nil)
-	resp := executeRequest(req, router)
+    router := gin.Default()
+    router.GET("/products", listProducts)
 
-	assert.Equal(t, 200, resp.StatusCode)
+    w := httptest.NewRecorder()
+    req, _ := http.NewRequest("GET", "/products", nil)
+    router.ServeHTTP(w, req)
 
-	var response []product
-	json.NewDecoder(resp.Body).Decode(&response)
-	assert.Greater(t, len(response), 0) // Verifica se a lista de produtos não está vazia
+    assert.Equal(t, http.StatusOK, w.Code)
+
+    var response []product
+    err := json.Unmarshal(w.Body.Bytes(), &response)
+    assert.NoError(t, err)
+    assert.NotEmpty(t, response)
+}
+
+func TestLogin(t *testing.T) {
+    router := gin.Default()
+    router.POST("/login", login)
+
+    loginPayload := `{"email":"joao@example.com","password":"12345"}`
+    w := httptest.NewRecorder()
+    req, _ := http.NewRequest("POST", "/login", strings.NewReader(loginPayload))
+    req.Header.Set("Content-Type", "application/json")
+    router.ServeHTTP(w, req)
+
+    assert.Equal(t, http.StatusOK, w.Code)
+
+    var response map[string]string
+    err := json.Unmarshal(w.Body.Bytes(), &response)
+    assert.NoError(t, err)
+    assert.NotEmpty(t, response["token"])
+}
+
+func TestCreateProduct(t *testing.T) {
+    router := gin.Default()
+    router.POST("/products", createProduct)
+
+    newProduct := `{"name":"New Product","type":"New Type","quantity":10}`
+    w := httptest.NewRecorder()
+    req, _ := http.NewRequest("POST", "/products", strings.NewReader(newProduct))
+    req.Header.Set("Content-Type", "application/json")
+    router.ServeHTTP(w, req)
+
+    assert.Equal(t, http.StatusCreated, w.Code)
+
+    var response product
+    err := json.Unmarshal(w.Body.Bytes(), &response)
+    assert.NoError(t, err)
+    assert.Equal(t, "New Product", response.Name)
+}
+
+func TestDeleteProduct(t *testing.T) {
+    router := gin.Default()
+    router.DELETE("/products/:id", deleteProduct)
+
+    w := httptest.NewRecorder()
+    req, _ := http.NewRequest("DELETE", "/products/P1", nil)
+    router.ServeHTTP(w, req)
+
+    assert.Equal(t, http.StatusOK, w.Code)
+
+    var response map[string]string
+    err := json.Unmarshal(w.Body.Bytes(), &response)
+    assert.NoError(t, err)
+    assert.Equal(t, "Product deleted", response["message"])
+}
+
+func TestListCustomers(t *testing.T) {
+    router := gin.Default()
+    router.GET("/customers", listCustomers)
+
+    w := httptest.NewRecorder()
+    req, _ := http.NewRequest("GET", "/customers", nil)
+    router.ServeHTTP(w, req)
+
+    assert.Equal(t, http.StatusOK, w.Code)
+
+    var response []customer
+    err := json.Unmarshal(w.Body.Bytes(), &response)
+    assert.NoError(t, err)
+    assert.NotEmpty(t, response)
+}
+
+func TestListSellers(t *testing.T) {
+    router := gin.Default()
+    router.GET("/sellers", listSellers)
+
+    w := httptest.NewRecorder()
+    req, _ := http.NewRequest("GET", "/sellers", nil)
+    router.ServeHTTP(w, req)
+
+    assert.Equal(t, http.StatusOK, w.Code)
+
+    var response []seller
+    err := json.Unmarshal(w.Body.Bytes(), &response)
+    assert.NoError(t, err)
+    assert.NotEmpty(t, response)
 }
 
 func TestAddCustomer(t *testing.T) {
-	// Testa o cadastro de cliente (rota pública)
-	newCustomer := customer{
-		Name:     "Lucas Costa",
-		Email:    "lucas@example.com",
-		Password: "password123",
-		CPF:      "12345678900",
-		Phone:    "11999990000",
-		Address:  "Rua XYZ, 123",
-	}
-	jsonValue, _ := json.Marshal(newCustomer)
+    router := gin.Default()
+    router.POST("/customers", addCustomer)
 
-	req, _ := http.NewRequest("POST", "/customers", bytes.NewBuffer(jsonValue))
-	resp := executeRequest(req, router)
+    newCustomer := `{"name":"New Customer","email":"newcustomer@example.com","password":"password","cpf":"12345678900","phone":"11999999999","address":"New Address"}`
+    w := httptest.NewRecorder()
+    req, _ := http.NewRequest("POST", "/customers", strings.NewReader(newCustomer))
+    req.Header.Set("Content-Type", "application/json")
+    router.ServeHTTP(w, req)
 
-	assert.Equal(t, 201, resp.StatusCode)
+    assert.Equal(t, http.StatusCreated, w.Code)
 
-	var response customer
-	json.NewDecoder(resp.Body).Decode(&response)
-	assert.Equal(t, newCustomer.Name, response.Name)
+    var response customer
+    err := json.Unmarshal(w.Body.Bytes(), &response)
+    assert.NoError(t, err)
+    assert.Equal(t, "New Customer", response.Name)
 }
 
 func TestAddSeller(t *testing.T) {
-	// Testa o cadastro de vendedor (rota pública)
-	newSeller := seller{
-		Name:     "Vendedor XYZ",
-		Email:    "vendedor@example.com",
-		Password: "password123",
-		CNPJ:     "12345678000123",
-		Phone:    "11988880000",
-		Address:  "Avenida ABC, 456",
-	}
-	jsonValue, _ := json.Marshal(newSeller)
+    router := gin.Default()
+    router.POST("/sellers", addSeller)
 
-	req, _ := http.NewRequest("POST", "/sellers", bytes.NewBuffer(jsonValue))
-	resp := executeRequest(req, router)
+    newSeller := `{"name":"New Seller","cnpj":"98765432100001","phone":"11988888888","email":"newseller@example.com","password":"password","address":"New Address"}`
+    w := httptest.NewRecorder()
+    req, _ := http.NewRequest("POST", "/sellers", strings.NewReader(newSeller))
+    req.Header.Set("Content-Type", "application/json")
+    router.ServeHTTP(w, req)
 
-	assert.Equal(t, 201, resp.StatusCode)
+    assert.Equal(t, http.StatusCreated, w.Code)
 
-	var response seller
-	json.NewDecoder(resp.Body).Decode(&response)
-	assert.Equal(t, newSeller.Name, response.Name)
+    var response seller
+    err := json.Unmarshal(w.Body.Bytes(), &response)
+    assert.NoError(t, err)
+    assert.Equal(t, "New Seller", response.Name)
 }

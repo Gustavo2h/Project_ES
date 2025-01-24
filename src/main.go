@@ -11,13 +11,13 @@ import (
 
 var jwtKey = []byte("secret_key") // Chave para assinar os tokens
 
-type LoginRequest struct {
+type loginRequest struct {
     Email    string `json:"email"`
     Password string `json:"password"`
 }
 
 // Estruturas dos dados
-type Seller struct {
+type seller struct {
     ID       string `json:"id"`
     Name     string `json:"name"`
     CNPJ     string `json:"cnpj"`
@@ -27,7 +27,7 @@ type Seller struct {
     Address  string `json:"address"`
 }
 
-type Customer struct {
+type customer struct {
     ID       string `json:"id"`
     Name     string `json:"name"`
     Email    string `json:"email"`
@@ -37,7 +37,7 @@ type Customer struct {
     Address  string `json:"address"`
 }
 
-type Product struct {
+type product struct {
     ID       string `json:"id"`
     Name     string `json:"name"`
     Type     string `json:"type"`
@@ -45,19 +45,19 @@ type Product struct {
 }
 
 // "Banco de dados" em memória com dados iniciais
-var Sellers = []Seller{
+var sellers = []seller{
     {"S1", "Loja A", "12345678000101", "11999990000", "loja_a@example.com", "password123", "Endereço A"},
     {"S2", "Loja B", "22345678000101", "11988880000", "loja_b@example.com", "password456", "Endereço B"},
     {"S3", "Loja C", "32345678000101", "11977770000", "loja_c@example.com", "password789", "Endereço C"},
 }
 
-var Customers = []Customer{
+var customers = []customer{
     {"C1", "João Silva", "joao@example.com", "12345", "11122233344", "11966660000", "Endereço do João"},
     {"C2", "Maria Oliveira", "maria@example.com", "54321", "22233344455", "11955550000", "Endereço da Maria"},
     {"C3", "Carlos Pereira", "carlos@example.com", "password", "33344455566", "11944440000", "Endereço do Carlos"},
 }
 
-var Products = []Product{
+var products = []product{
     {"P1", "Notebook", "Eletrônico", 10},
     {"P2", "Smartphone", "Eletrônico", 15},
     {"P3", "Cadeira", "Móveis", 20},
@@ -69,29 +69,29 @@ func main() {
     router := gin.Default()
 
     // Rotas públicas
-    router.GET("/products", ListProducts) // Qualquer um pode listar produtos
-    router.POST("/login", Login)          // Login para obter token
-    router.POST("/customers", AddCustomer) // Cadastro de cliente sem autenticação
-    router.POST("/sellers", AddSeller)    // Cadastro de vendedor sem autenticação
+    router.GET("/products", listProducts) // Qualquer um pode listar produtos
+    router.POST("/login", login)          // Login para obter token
+    router.POST("/customers", addCustomer) // Cadastro de cliente sem autenticação
+    router.POST("/sellers", addSeller)    // Cadastro de vendedor sem autenticação
 
     // Rotas protegidas
     protected := router.Group("/")
-    protected.Use(AuthMiddleware())
+    protected.Use(authMiddleware())
     {
         // Rotas exclusivas para vendedores
-        protected.POST("/products", SellerMiddleware(), CreateProduct)
-        protected.DELETE("/products/:id", SellerMiddleware(), DeleteProduct)
+        protected.POST("/products", sellerMiddleware(), createProduct)
+        protected.DELETE("/products/:id", sellerMiddleware(), deleteProduct)
 
         // Rotas gerais (somente autenticadas)
-        protected.GET("/customers", ListCustomers)
-        protected.GET("/sellers", ListSellers)
+        protected.GET("/customers", listCustomers)
+        protected.GET("/sellers", listSellers)
     }
 
     router.Run("localhost:8080")
 }
 
 // Middleware de autenticação
-func AuthMiddleware() gin.HandlerFunc {
+func authMiddleware() gin.HandlerFunc {
     return func(c *gin.Context) {
         authHeader := c.GetHeader("Authorization")
         if authHeader == "" {
@@ -118,7 +118,7 @@ func AuthMiddleware() gin.HandlerFunc {
 }
 
 // Middleware para verificar se o usuário é vendedor
-func SellerMiddleware() gin.HandlerFunc {
+func sellerMiddleware() gin.HandlerFunc {
     return func(c *gin.Context) {
         userType, _ := c.Get("userType")
         if userType != "seller" {
@@ -131,8 +131,8 @@ func SellerMiddleware() gin.HandlerFunc {
 }
 
 // Login para gerar tokens
-func Login(c *gin.Context) {
-    var request LoginRequest
+func login(c *gin.Context) {
+    var request loginRequest
     if err := c.BindJSON(&request); err != nil {
         c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid input"})
         return
@@ -140,14 +140,14 @@ func Login(c *gin.Context) {
 
     // Verifica credenciais
     var userID, userType string
-    for _, seller := range Sellers {
+    for _, seller := range sellers {
         if seller.Email == request.Email && seller.Password == request.Password {
             userID = seller.ID
             userType = "seller"
             break
         }
     }
-    for _, customer := range Customers {
+    for _, customer := range customers {
         if customer.Email == request.Email && customer.Password == request.Password {
             userID = customer.ID
             userType = "customer"
@@ -176,22 +176,22 @@ func Login(c *gin.Context) {
 }
 
 // Operações de Produto
-func CreateProduct(c *gin.Context) {
-    var newProduct Product
+func createProduct(c *gin.Context) {
+    var newProduct product
     if err := c.BindJSON(&newProduct); err != nil {
         c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid input"})
         return
     }
-    newProduct.ID = GenerateID(len(Products), "P")
-    Products = append(Products, newProduct)
+    newProduct.ID = generateID(len(products), "P")
+    products = append(products, newProduct)
     c.JSON(http.StatusCreated, newProduct)
 }
 
-func DeleteProduct(c *gin.Context) {
+func deleteProduct(c *gin.Context) {
     id := c.Param("id")
-    for i, p := range Products {
+    for i, p := range products {
         if p.ID == id {
-            Products = append(Products[:i], Products[i+1:]...)
+            products = append(products[:i], products[i+1:]...)
             c.JSON(http.StatusOK, gin.H{"message": "Product deleted"})
             return
         }
@@ -199,43 +199,43 @@ func DeleteProduct(c *gin.Context) {
     c.JSON(http.StatusNotFound, gin.H{"message": "Product not found"})
 }
 
-func ListProducts(c *gin.Context) {
-    c.JSON(http.StatusOK, Products)
+func listProducts(c *gin.Context) {
+    c.JSON(http.StatusOK, products)
 }
 
 // Funções auxiliares (listagem e gerar IDs)
-func ListSellers(c *gin.Context) {
-    c.JSON(http.StatusOK, Sellers)
+func listSellers(c *gin.Context) {
+    c.JSON(http.StatusOK, sellers)
 }
 
-func ListCustomers(c *gin.Context) {
-    c.JSON(http.StatusOK, Customers)
+func listCustomers(c *gin.Context) {
+    c.JSON(http.StatusOK, customers)
 }
 
-func GenerateID(index int, prefix string) string {
+func generateID(index int, prefix string) string {
     return prefix + strconv.Itoa(index)
 }
 
 // Função para adicionar cliente
-func AddCustomer(c *gin.Context) {
-    var newCustomer Customer
+func addCustomer(c *gin.Context) {
+    var newCustomer customer
     if err := c.BindJSON(&newCustomer); err != nil {
         c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid input"})
         return
     }
-    newCustomer.ID = GenerateID(len(Customers), "C")
-    Customers = append(Customers, newCustomer)
+    newCustomer.ID = generateID(len(customers), "C")
+    customers = append(customers, newCustomer)
     c.JSON(http.StatusCreated, newCustomer)
 }
 
 // Função para adicionar vendedor
-func AddSeller(c *gin.Context) {
-    var newSeller Seller
+func addSeller(c *gin.Context) {
+    var newSeller seller
     if err := c.BindJSON(&newSeller); err != nil {
         c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid input"})
         return
     }
-    newSeller.ID = GenerateID(len(Sellers), "S")
-    Sellers = append(Sellers, newSeller)
+    newSeller.ID = generateID(len(sellers), "S")
+    sellers = append(sellers, newSeller)
     c.JSON(http.StatusCreated, newSeller)
 }
