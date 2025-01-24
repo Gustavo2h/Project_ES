@@ -6,7 +6,6 @@ import (
     "github.com/stretchr/testify/assert"
 )
 
-// Renomeamos a função para evitar conflitos
 func TestGenerateID_Unit(t *testing.T) {
     testCases := []struct {
         index    int
@@ -40,8 +39,8 @@ func TestValidateProduct(t *testing.T) {
 }
 
 func TestValidateCustomer(t *testing.T) {
-    validCustomer := customer{Name: "Customer", Email: "test@example.com", CPF: "12345678900"}
-    invalidCustomer := customer{Name: "", Email: "invalid", CPF: "123"}
+    validCustomer := customer{Name: "Customer", Email: "test@example.com", CPF: "12345678900", Phone: "123456789"}
+    invalidCustomer := customer{Name: "", Email: "invalid", CPF: "123", Phone: ""}
 
     t.Run("Valid Customer", func(t *testing.T) {
         assert.True(t, validateCustomer(validCustomer))
