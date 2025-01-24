@@ -239,3 +239,17 @@ func addSeller(c *gin.Context) {
     sellers = append(sellers, newSeller)
     c.JSON(http.StatusCreated, newSeller)
 }
+
+// Funções de Validação
+
+func validateProduct(p product) bool {
+    return p.Name != "" && p.Type != "" && p.Quantity > 0
+}
+
+func validateCustomer(c customer) bool {
+    return c.Name != "" && c.Email != "" && c.CPF != "" && c.Phone != ""
+}
+
+func validateSeller(s seller) bool {
+    return s.Name != "" && s.CNPJ != "" && s.Email != ""
+}
