@@ -24,12 +24,11 @@ jobs:
 
     - name: Install dependencies
       run: go mod tidy
+      working-directory: ./src
 
-    - name: Run unit tests
-      run: go test ./src/unit_test.go -v
-
-    - name: Run integration tests
-      run: go test ./src/main_test.go -v
+    - name: Run tests
+      run: go test ./...
+      working-directory: ./src
 
   deploy:
     runs-on: ubuntu-latest
